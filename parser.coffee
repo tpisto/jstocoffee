@@ -213,7 +213,10 @@ class J2C.UnaryExpression extends J2C.UBExpression
     if @operator == 'void'
       return 'undefined'
     else 
-      return "#{@convertOperator(@operator)} #{@argument.getCoffee()}"
+      if @operator == '-'
+        return "#{@convertOperator(@operator)}#{@argument.getCoffee()}"
+      else 
+        return "#{@convertOperator(@operator)} #{@argument.getCoffee()}"
 
 class J2C.DebuggerStatement extends J2C.SyntaxTree
   getCoffee: () ->
@@ -367,7 +370,7 @@ class J2C.IfStatement extends J2C.SyntaxTree
     if @test instanceof J2C.UnaryExpression and @test.operator == '!'
       myIf = 'unless'
       @test.operator = ''
-    else if @test instanceof J2C.BinaryExpression and @test.operator == '!='
+    else if @test instanceof J2C.BinaryExpression and @test.operator == '!=' and not @test.nullCase
       myIf = 'unless '
       @test.operator = 'is'
     else if @test.nullCase and @test.nullEquals
@@ -406,6 +409,20 @@ class J2C.ForStatement extends J2C.SyntaxTree
     else 
       addNot = ''
     return "#{init}while #{addNot}#{@test.getCoffee()}#{@body.getCoffee()}"
+
+class J2C.WhileStatement extends J2C.ForStatement
+  getCoffee: () ->
+    # Null case
+    if @test.nullCase
+      addNot = 'not '
+    else 
+      addNot = ''
+    if @body instanceof J2C.BlockStatement
+      if @body.childs.length == 1
+        myBody = @body.getCoffee()
+        return "#{myBody.substring(3,myBody.length-1)} #{if @test.nullCase then 'until' else 'while'} #{@test.getCoffee()}"
+      else 
+        return "while #{addNot}#{@test.getCoffee()}#{@body.getCoffee()}"
 
 class J2C.FunctionDeclaration extends J2C.FunctionExpression
 
