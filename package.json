@@ -1,0 +1,22 @@
+{
+  "name": "jstocoffee",
+  "version": "0.0.1",
+  "description": "Javascript to CoffeeScript compiler",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "Tommi Pisto",
+  "license": "MIT",
+  "dependencies": {
+    "pegjs": "^0.8.0"
+  },
+  "devDependencies": {
+    "glob": "^4.0.0",
+    "underscore": "^1.6.0",
+    "joe": "^1.4.0",
+    "ansidiff": "^1.0.0",
+    "assert": "^1.1.1",
+    "joe-reporter-console": "^1.2.1"
+  }
+}
