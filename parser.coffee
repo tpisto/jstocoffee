@@ -15,7 +15,7 @@ class J2C.SyntaxTree
     tabChars = new Array(3).join(' ')    
     mySplit = str.split("\n")
     for s in mySplit
-      if s.length <= 0
+      if s.trim().length <= 0
         ret += "\n"
       else
         ret += "#{tabChars}#{s}\n"
@@ -32,26 +32,29 @@ class J2C.BlockStatement extends J2C.SyntaxTree
   create: () ->
     @childs = []
     for t in @tree.body
-      @childs.push new J2C[t.type](this, t)
+      myClass = new J2C[t.type](this, t)      
+      # Do not add empty statements
+      if !(myClass instanceof J2C.EmptyStatement)
+        @childs.push myClass
 
-  getCoffee: () ->  
+  getCoffee: () -> 
     ret = []
-    for c in @childs      
+    for c in @childs
       ret.push c.getCoffee()
     return @tabStr "\n#{ret.join("\n")}"
 
 class J2C.Program extends J2C.SyntaxTree
-  constructor: (parent, tree) ->    
-    super(parent, tree)
-
   create: () ->
     @childs = []
     for t in @tree.body
-      @childs.push new J2C[t.type](this, t)
+      myClass = new J2C[t.type](this, t)      
+      # Do not add empty statements
+      if !(myClass instanceof J2C.EmptyStatement)
+        @childs.push myClass
 
   getCoffee: () ->
-    ret = []
-    for c in @childs      
+    ret = []    
+    for c in @childs
       ret.push c.getCoffee()
     return ret.join("\n")
 
@@ -160,13 +163,57 @@ class J2C.ObjectExpression extends J2C.SyntaxTree
     else 
       return ret[0]
 
-class J2C.UnaryExpression extends J2C.SyntaxTree
+class J2C.UBExpression extends J2C.SyntaxTree
+  convertOperator: (operator) ->
+    conversions = 
+      '===': 'is'
+      '==': 'is'
+      '!==': 'isnt'
+      '!': 'not'      
+    if conversions[operator]?
+      return conversions[operator]
+    else 
+      return operator
+
+class J2C.BinaryExpression extends J2C.UBExpression
+  create: () ->
+    @left = new J2C[@tree.left.type](this, @tree.left)
+    @right = new J2C[@tree.right.type](this, @tree.right)
+    @operator = @tree.operator
+    @checkNullCase()
+
+  getCoffee: () ->
+    # Null case
+    if @nullCase
+      ret = "#{@left.getCoffee()}?"
+    # Normal case
+    else 
+      ret = "#{@left.getCoffee()} #{@convertOperator(@operator)} #{@right.getCoffee()}"
+    if @parent instanceof J2C.BinaryExpression and ((@left instanceof J2C.Literal or @left instanceof J2C.Identifier) or (@right instanceof J2C.Literal or @right instanceof J2C.Identifier))
+      ret = "(#{ret})"
+    return ret
+
+  checkNullCase: () ->
+    # Null or Void 0
+    @nullCase = true
+    if (@right.value == null and @operator == '==') or (@operator == '==' and @right?.operator == 'void')
+      @nullEquals = true
+    else if (@right.value == null and @operator == '!=')
+      @nullEquals = false
+    else 
+      @nullCase = false
+
+class J2C.UnaryExpression extends J2C.UBExpression
   create: () ->
     @operator = @tree.operator
     @argument = new J2C[@tree.argument.type](this, @tree.argument)
 
   getCoffee: () ->
-    return "#{@operator} #{@argument.getCoffee()}"
+    # Void
+    if @operator == 'void'
+      return 'undefined'
+    else 
+      return "#{@convertOperator(@operator)} #{@argument.getCoffee()}"
 
 class J2C.DebuggerStatement extends J2C.SyntaxTree
   getCoffee: () ->
@@ -184,6 +231,8 @@ class J2C.Identifier extends J2C.SyntaxTree
     return str
 
 class J2C.Literal extends J2C.SyntaxTree
+  create: () ->
+    @value = @tree.value    
   getCoffee: () ->
     if typeof @tree.value == 'string'
       return "\"#{@tree.value}\""
@@ -217,21 +266,15 @@ class J2C.FunctionExpression extends J2C.SyntaxTree
 
     # Add return to body block, if no return statement found
     if !@hasReturn
-      @body.childs.push new J2C.ReturnStatement(this, { type: 'ReturnStatement', argument: null })
+      if @body.childs.length > 0
+        @body.childs.push new J2C.ReturnStatement(this, { type: 'ReturnStatement', argument: null })
 
-    ret += @body.getCoffee()    
-    return ret
+    # Trim if function is empty
+    if @body.childs.length > 0
+      ret += @body.getCoffee()
+    else 
+      ret += "\n" 
 
-class J2C.BinaryExpression extends J2C.SyntaxTree
-  create: () ->
-    @left = new J2C[@tree.left.type](this, @tree.left)
-    @right = new J2C[@tree.right.type](this, @tree.right)
-    @operator = @tree.operator
-
-  getCoffee: () ->
-    ret = "#{@left.getCoffee()} #{@operator} #{@right.getCoffee()}"
-    if @parent instanceof J2C.BinaryExpression and ((@left instanceof J2C.Literal or @left instanceof J2C.Identifier) or (@right instanceof J2C.Literal or @right instanceof J2C.Identifier))
-      ret = "(#{ret})"
     return ret
 
 class J2C.UpdateExpression extends J2C.SyntaxTree
@@ -249,7 +292,9 @@ class J2C.AssignmentExpression extends J2C.SyntaxTree
     @operator = @tree.operator
 
   getCoffee: () ->
-    return "#{@left.getCoffee()} #{@operator} #{@right.getCoffee()}"
+    # Trim the whitespace after operator
+    whiteSpace = if @right instanceof J2C.ObjectExpression then '' else ' '
+    return "#{@left.getCoffee()} #{@operator}#{whiteSpace}#{@right.getCoffee()}"
 
 class J2C.ThisExpression extends J2C.SyntaxTree
   getCoffee: () ->
@@ -284,6 +329,49 @@ class J2C.BreakUnless extends J2C.SyntaxTree
   getCoffee: () ->
     return "break unless #{@test.getCoffee()}"    
 
+class J2C.TryStatement extends J2C.SyntaxTree
+  create: () ->
+    @block = new J2C[@tree.block.type](this, @tree.block)
+    @handler = new J2C[@tree.handler.type](this, @tree.handler)
+  getCoffee: () ->
+    return "try#{@block.getCoffee()}#{@handler.getCoffee()}"
+
+class J2C.CatchClause extends J2C.SyntaxTree
+  create: () ->
+    @param = new J2C[@tree.param.type](this, @tree.param)
+    @body = new J2C[@tree.body.type](this, @tree.body)
+  getCoffee: () ->
+    if @body.getCoffee().trim().length > 0
+      return "catch #{@param.getCoffee()}#{@body.getCoffee()}"
+    else 
+      return ''
+
+class J2C.IfStatement extends J2C.SyntaxTree
+  create: () ->
+    @test = new J2C[@tree.test.type](this, @tree.test)
+    @consequent = new J2C[@tree.consequent.type](this, @tree.consequent)
+  getCoffee: () ->    
+    myIf = @checkUnless()
+    # If only one parameter in block, move consequent before clause
+    if @consequent instanceof J2C.BlockStatement
+      if @consequent.childs.length == 1
+        consCoff = @consequent.getCoffee()
+        return "#{consCoff.substring(3,consCoff.length-1)} #{myIf}#{@test.getCoffee()}"
+    return "#{myIf}#{@test.getCoffee()}#{@consequent.getCoffee()}"
+  checkUnless: () ->
+    # If -> Unless
+    if @test instanceof J2C.UnaryExpression and @test.operator == '!'
+      myIf = 'unless'
+      @test.operator = ''
+    else if @test instanceof J2C.BinaryExpression and @test.operator == '!='
+      myIf = 'unless '
+      @test.operator = 'is'
+    else if @test.nullCase and @test.nullEquals
+      myIf = 'unless '
+    else 
+      myIf = 'if '
+    return myIf    
+
 class J2C.FunctionDeclaration extends J2C.FunctionExpression
 
 class J2C.EmptyStatement extends J2C.SyntaxTree
@@ -298,9 +386,6 @@ class J2C.Main
 
   getSyntaxTree: () ->
     return @syntaxTree
-
-  getCoffee: () ->
-    return @classTree.getCoffee()
 
   showTree: () ->
     console.log util.inspect(@getSyntaxTree(), {showHidden: false, depth: null})

@@ -1,3 +1,3 @@
-@on "data", ->
-  console.log "Received"
+unlessChecks = ->
+  wat unless typeof x is "undefined"
   return
