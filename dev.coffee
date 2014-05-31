@@ -2,9 +2,7 @@ js2c = require('parser.coffee')
 fs = require 'fs'
 
 str = '''
-function unlessChecks() {
-    if (typeof x != 'undefined') { wat }
-}
+(function ($) { return $; }());
 '''
 
 console.log "\n--------\n"

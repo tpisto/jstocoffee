@@ -40,7 +40,7 @@ class J2C.BlockStatement extends J2C.SyntaxTree
   getCoffee: () -> 
     ret = []
     for c in @childs
-      ret.push c.getCoffee()
+      ret.push c.getCoffee()    
     return @tabStr "\n#{ret.join("\n")}"
 
 class J2C.Program extends J2C.SyntaxTree
@@ -280,10 +280,14 @@ class J2C.FunctionExpression extends J2C.SyntaxTree
 class J2C.UpdateExpression extends J2C.SyntaxTree
   create: () ->
     @operator = @tree.operator
+    @prefix = @tree.prefix
     @argument = new J2C[@tree.argument.type](this, @tree.argument)
 
   getCoffee: () ->
-    return "#{@argument.getCoffee()}#{@operator}"
+    if @prefix
+      return "#{@operator}#{@argument.getCoffee()}"
+    else
+      return "#{@argument.getCoffee()}#{@operator}"
 
 class J2C.AssignmentExpression extends J2C.SyntaxTree
   create: () ->
@@ -372,7 +376,42 @@ class J2C.IfStatement extends J2C.SyntaxTree
       myIf = 'if '
     return myIf    
 
+class J2C.ForInStatement extends J2C.SyntaxTree
+  create: () ->
+    @left = new J2C[@tree.left.type](this, @tree.left)
+    @right = new J2C[@tree.right.type](this, @tree.right)
+    @body = new J2C[@tree.body.type](this, @tree.body)
+    @fixEmptyBody()
+  getCoffee: () ->
+    return "for #{@left.getCoffee()} of #{@right.getCoffee()}#{@body.getCoffee()}"
+  fixEmptyBody: () ->
+    if @body.childs.length <= 0
+      @body.childs.push new J2C.ContinueStatement(this, @tree)
+
+class J2C.ForStatement extends J2C.SyntaxTree
+  create: () ->
+    if @tree.init? then @init = new J2C[@tree.init.type](this, @tree.init)
+    if @tree.test? then @test = new J2C[@tree.test.type](this, @tree.test)    
+    if @tree.update? then @update = new J2C[@tree.update.type](this, @tree.update)    
+    @body = new J2C[@tree.body.type](this, @tree.body)
+    # Add update inside the block
+    if @update?
+      @body.childs.push @update
+  getCoffee: () ->
+    init = if @init? then "#{@init.getCoffee()}\n" else ''
+    if not @test? then return "#{init}loop#{@body.getCoffee()}"
+    # Null case
+    if @test.nullCase
+      addNot = 'not '
+    else 
+      addNot = ''
+    return "#{init}while #{addNot}#{@test.getCoffee()}#{@body.getCoffee()}"
+
 class J2C.FunctionDeclaration extends J2C.FunctionExpression
+
+class J2C.ContinueStatement extends J2C.SyntaxTree
+  getCoffee: () ->
+    return 'continue'
 
 class J2C.EmptyStatement extends J2C.SyntaxTree
   getCoffee: () ->
