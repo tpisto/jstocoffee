@@ -2,10 +2,14 @@ js2c = require('parser.coffee')
 fs = require 'fs'
 
 str = '''
-for (x=0; !x<2; x++) { alert(1) }
-for (; !x<2; ) { alert(1) }
-for (;;++x) { alert(1) }
-for (;;) { alert(1) }
+x = {
+  a: 2,
+  b: 3,
+  c:
+    { one: 1 },
+  d: 3
+
+}
 '''
 
 console.log "\n--------\n"

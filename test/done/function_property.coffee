@@ -1,4 +1,4 @@
 (->
 ).apa
 f = (->
-).bind(this)
+).bind @

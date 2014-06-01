@@ -1,8 +1,7 @@
 x =
   a: 2
   b: 3
-  c:
-    one: 1
+  c: one: 1
 
 console.log
   two: 2

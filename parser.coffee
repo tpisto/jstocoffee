@@ -278,6 +278,10 @@ class J2C.FunctionExpression extends J2C.SyntaxTree
     else 
       ret += "\n" 
 
+    # If function is object for meber
+    if @parent instanceof J2C.MemberExpression
+      ret = "(#{ret})"
+
     return ret
 
 class J2C.UpdateExpression extends J2C.SyntaxTree
