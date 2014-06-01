@@ -186,6 +186,7 @@ class J2C.UBExpression extends J2C.SyntaxTree
       '!!!': 'not'   
       '!!': ''   
       '!': 'not'      
+      '||': 'or'
     if conversions[operator]?
       return conversions[operator]
     else 
@@ -392,11 +393,17 @@ class J2C.IfStatement extends J2C.SyntaxTree
     @alternate = if @tree.alternate? then new J2C[@tree.alternate.type](this, @tree.alternate)
   getCoffee: () ->    
     myIf = @checkUnless()
+    
     # If only one parameter in block, move consequent before clause
     if @consequent instanceof J2C.BlockStatement
       if @consequent.childs.length == 1
         consCoff = @consequent.getCoffee()
         return "#{consCoff.substring(3,consCoff.length-1)} #{myIf}#{@test.getCoffee()}"
+    
+    # If only expression
+    if @consequent instanceof J2C.ExpressionStatement
+      return "#{@consequent.getCoffee()} #{myIf}#{@test.getCoffee()}"
+    
     alternate = if @alternate? then "\nelse #{@alternate.getCoffee()}" else ''
     return "#{myIf}#{@test.getCoffee()} #{@consequent.getCoffee()}#{alternate}"
   checkUnless: () ->
