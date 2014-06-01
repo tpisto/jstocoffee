@@ -2,9 +2,11 @@ js2c = require('parser.coffee')
 fs = require 'fs'
 
 str = '''
-function baz() {
-    if (1) return 2; else return 1;
-}
+if(a instanceof b) 4;
+function ifChecks() {
+    if (x) { yep }
+    if (!x) { yep }
+}  
 '''
 
 console.log "\n--------\n"

@@ -183,6 +183,8 @@ class J2C.UBExpression extends J2C.SyntaxTree
       '===': 'is'
       '==': 'is'
       '!==': 'isnt'
+      '!!!': 'not'   
+      '!!': ''   
       '!': 'not'      
     if conversions[operator]?
       return conversions[operator]
@@ -205,6 +207,7 @@ class J2C.BinaryExpression extends J2C.UBExpression
       ret = "#{@left.getCoffee()} #{@convertOperator(@operator)} #{@right.getCoffee()}"
     if @parent instanceof J2C.BinaryExpression and ((@left instanceof J2C.Literal or @left instanceof J2C.Identifier) or (@right instanceof J2C.Literal or @right instanceof J2C.Identifier))
       ret = "(#{ret})"
+    ret = @wrapParenthesis(ret)
     return ret
 
   checkNullCase: () ->
@@ -216,6 +219,12 @@ class J2C.BinaryExpression extends J2C.UBExpression
       @nullEquals = false
     else 
       @nullCase = false
+
+  wrapParenthesis: (str) ->
+    if @parent instanceof J2C.UnaryExpression
+      return "(#{str})";
+    else
+      return str
 
 class J2C.UnaryExpression extends J2C.UBExpression
   create: () ->
@@ -229,8 +238,13 @@ class J2C.UnaryExpression extends J2C.UBExpression
     else 
       if @operator == '-'
         return "#{@convertOperator(@operator)}#{@argument.getCoffee()}"
-      else 
-        return "#{@convertOperator(@operator)} #{@argument.getCoffee()}"
+      else
+        if @argument instanceof J2C.UnaryExpression
+          @argument.operator += @operator
+          return @argument.getCoffee()
+        else
+          whiteSpace = if @convertOperator(@operator).length > 0 then ' ' else ''
+          return "#{@convertOperator(@operator)}#{whiteSpace}#{@argument.getCoffee()}"
 
 class J2C.DebuggerStatement extends J2C.SyntaxTree
   getCoffee: () ->
@@ -388,7 +402,7 @@ class J2C.IfStatement extends J2C.SyntaxTree
   checkUnless: () ->
     # If -> Unless
     if @test instanceof J2C.UnaryExpression and @test.operator == '!'
-      myIf = 'unless'
+      myIf = 'unless '
       @test.operator = ''
     else if @test instanceof J2C.BinaryExpression and @test.operator == '!=' and not @test.nullCase
       myIf = 'unless '

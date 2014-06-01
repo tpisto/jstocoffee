@@ -1,3 +1,5 @@
-baz = ->
-  if 1 return 2
-  else return 1
+if a instanceof b 4
+ifChecks = ->
+  yep if x
+  yep unless x
+  return
