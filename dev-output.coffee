@@ -1,5 +1,3 @@
-x =
-  a: 2
-  b: 3
-  c: one: 1
-  d: 3
+baz = ->
+  if 1 return 2
+  else return 1

@@ -2,13 +2,8 @@ js2c = require('parser.coffee')
 fs = require 'fs'
 
 str = '''
-x = {
-  a: 2,
-  b: 3,
-  c:
-    { one: 1 },
-  d: 3
-
+function baz() {
+    if (1) return 2; else return 1;
 }
 '''
 

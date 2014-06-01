@@ -5,14 +5,17 @@ J2C = {}
 
 class J2C.SyntaxTree
   constructor: (parent, tree) ->
+    @type = tree.type
     @tree = tree;  
     @parent = parent
     @childs = []
+    @tabSpace = 2
+    @tabChars = new Array(@tabSpace+1).join(' ')    
     @create()
 
   tabStr: (str) -> 
     ret = ""
-    tabChars = new Array(3).join(' ')    
+    tabChars = new Array(@tabSpace+1).join(' ')    
     mySplit = str.split("\n")
     for s in mySplit
       if s.trim().length <= 0
@@ -121,18 +124,29 @@ class J2C.ReturnStatement extends J2C.SyntaxTree
     if @parent.parent instanceof J2C.FunctionExpression
       @parent.parent.hasReturn = true
 
+    # Flag last return to function
+    @findParent(@parent)?.lastReturn = this
+
   getCoffee: () ->
+    returnString = 'return '
     # Check if return is in last line
     if @parent instanceof J2C.BlockStatement
       if @parent.childs[@parent.childs.length-1] instanceof J2C.ReturnStatement
-        @isLastLine = true
-    
-    returnString = if @isLastLine then '' else 'return '
+        if @findParent(@parent)?.lastReturn == this
+          returnString = ''
 
     if @argument?
       return "#{returnString}#{@argument.getCoffee()}"
     else 
       return returnString.trim()
+
+  findParent: (myParent) -> 
+    if myParent.type == 'Program'
+      return null
+    else if myParent.type == 'FunctionExpression' or myParent.type == 'FunctionDeclaration' or myParent.type == 'CallExpression'
+      return myParent
+    else
+      return @findParent(myParent.parent)
 
 class J2C.MemberExpression extends J2C.SyntaxTree
   create: () ->
@@ -269,7 +283,7 @@ class J2C.FunctionExpression extends J2C.SyntaxTree
 
     # Add return to body block, if no return statement found
     if !@hasReturn
-      if @body.childs.length > 0
+      if @body.childs.length > 0 and !@lastReturn?
         @body.childs.push new J2C.ReturnStatement(this, { type: 'ReturnStatement', argument: null })
 
     # Trim if function is empty
@@ -361,6 +375,7 @@ class J2C.IfStatement extends J2C.SyntaxTree
   create: () ->
     @test = new J2C[@tree.test.type](this, @tree.test)
     @consequent = new J2C[@tree.consequent.type](this, @tree.consequent)
+    @alternate = if @tree.alternate? then new J2C[@tree.alternate.type](this, @tree.alternate)
   getCoffee: () ->    
     myIf = @checkUnless()
     # If only one parameter in block, move consequent before clause
@@ -368,7 +383,8 @@ class J2C.IfStatement extends J2C.SyntaxTree
       if @consequent.childs.length == 1
         consCoff = @consequent.getCoffee()
         return "#{consCoff.substring(3,consCoff.length-1)} #{myIf}#{@test.getCoffee()}"
-    return "#{myIf}#{@test.getCoffee()}#{@consequent.getCoffee()}"
+    alternate = if @alternate? then "\nelse #{@alternate.getCoffee()}" else ''
+    return "#{myIf}#{@test.getCoffee()} #{@consequent.getCoffee()}#{alternate}"
   checkUnless: () ->
     # If -> Unless
     if @test instanceof J2C.UnaryExpression and @test.operator == '!'
