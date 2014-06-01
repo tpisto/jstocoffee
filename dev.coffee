@@ -2,7 +2,7 @@ js2c = require('parser.coffee')
 fs = require 'fs'
 
 str = '''
-test({url: url}, options || {});
+(function($) { return new jQuery.fn.init( selector, context ); })(jQuery);
 '''
 
 console.log "\n--------\n"

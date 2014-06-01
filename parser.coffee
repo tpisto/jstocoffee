@@ -249,6 +249,18 @@ class J2C.UnaryExpression extends J2C.UBExpression
           whiteSpace = if @convertOperator(@operator).length > 0 then ' ' else ''
           return "#{@convertOperator(@operator)}#{whiteSpace}#{@argument.getCoffee()}"
 
+class J2C.NewExpression extends J2C.SyntaxTree
+  create: () ->
+    @callee = new J2C[@tree.callee.type](this, @tree.callee)
+    @arguments = []
+    for a in @tree.arguments
+      @arguments.push new J2C[a.type](this, a)
+  getCoffee: () ->
+    args = []
+    for a in @arguments
+      args.push a.getCoffee()
+    return "new #{@callee.getCoffee()}(#{args.join(', ')})"
+
 class J2C.DebuggerStatement extends J2C.SyntaxTree
   getCoffee: () ->
     return "debugger"

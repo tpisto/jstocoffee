@@ -1,1 +1,3 @@
-test url: url, options or {}
+(($) ->
+  new jQuery.fn.init(selector, context)
+) jQuery
