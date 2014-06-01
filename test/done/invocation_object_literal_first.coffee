@@ -1,3 +1,1 @@
-test
-  url: url
-, options or {}
+test url: url, options or {}

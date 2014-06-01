@@ -174,7 +174,9 @@ class J2C.ObjectExpression extends J2C.SyntaxTree
       ret.push "#{c.key.getCoffee()}: #{c.value.getCoffee()}"
     if @properties.length > 1
       return @tabStr "\n#{ret.join("\n")}"
-    else 
+    else if @properties.length == 0
+      return '{}'
+    else
       return ret[0]
 
 class J2C.UBExpression extends J2C.SyntaxTree
